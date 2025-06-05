@@ -1,27 +1,26 @@
 package net.swofty.types.generic.event.actions.player.gui;
 
 import net.kyori.adventure.text.Component;
-import net.minestom.server.event.inventory.InventoryCloseEvent;
 import net.minestom.server.event.inventory.InventoryPreClickEvent;
-import net.minestom.server.inventory.PlayerInventory;
 import net.minestom.server.inventory.click.ClickType;
 import net.minestom.server.item.ItemComponent;
 import net.swofty.commons.StringUtility;
 import net.swofty.types.generic.event.EventNodes;
 import net.swofty.types.generic.event.SkyBlockEvent;
 import net.swofty.types.generic.event.SkyBlockEventClass;
-import net.swofty.types.generic.gui.SkyBlockSignGUI;
-import net.swofty.types.generic.gui.inventory.SkyBlockInventoryGUI;
-import net.swofty.types.generic.gui.inventory.item.GUIClickableItem;
-import net.swofty.types.generic.gui.inventory.item.GUIItem;
-import net.swofty.types.generic.gui.inventory.item.GUIQueryItem;
+import net.swofty.types.generic.gui.inventory.GUIItem;
+import net.swofty.types.generic.gui.inventory.SkyBlockAbstractInventory;
+import net.swofty.types.generic.gui.inventory.actions.RefreshAction;
+import net.swofty.types.generic.gui.inventory.actions.RefreshSlotAction;
 import net.swofty.types.generic.item.SkyBlockItem;
 import net.swofty.types.generic.item.components.InteractableComponent;
 import net.swofty.types.generic.user.SkyBlockPlayer;
 
+import java.util.List;
+
 public class ActionPlayerInventoryClick implements SkyBlockEventClass {
 
-    @SkyBlockEvent(node = EventNodes.PLAYER , requireDataLoaded = false)
+    @SkyBlockEvent(node = EventNodes.PLAYER, requireDataLoaded = false)
     public void run(InventoryPreClickEvent event) {
         final SkyBlockPlayer player = (SkyBlockPlayer) event.getPlayer();
         SkyBlockItem clickedItem = new SkyBlockItem(event.getClickedItem());
@@ -49,14 +48,13 @@ public class ActionPlayerInventoryClick implements SkyBlockEventClass {
         Component displayNameCursor = event.getCursorItem().get(ItemComponent.CUSTOM_NAME);
         Component displayNameClicked = event.getClickedItem().get(ItemComponent.CUSTOM_NAME);
         if ((displayNameCursor != null && StringUtility.getTextFromComponent(displayNameCursor).contains("Switch your held"))
-        || (displayNameClicked != null && StringUtility.getTextFromComponent(displayNameClicked).contains("Switch your held"))) {
+                || (displayNameClicked != null && StringUtility.getTextFromComponent(displayNameClicked).contains("Switch your held"))) {
             event.setCancelled(true);
             return;
         }
 
-        if (SkyBlockInventoryGUI.GUI_MAP.containsKey(player.getUuid())) {
-            SkyBlockInventoryGUI gui = SkyBlockInventoryGUI.GUI_MAP.get(player.getUuid());
-
+        if (SkyBlockAbstractInventory.GUI_MAP.containsKey(player.getUuid())) {
+            SkyBlockAbstractInventory gui = SkyBlockAbstractInventory.GUI_MAP.get(player.getUuid());
             if (gui == null) return;
 
             if (event.getClickType().equals(ClickType.DOUBLE_CLICK)) {
@@ -67,44 +65,40 @@ public class ActionPlayerInventoryClick implements SkyBlockEventClass {
             if (event.getInventory() == null) {
                 if (!gui.allowHotkeying() && isHotKey(event)) {
                     event.setCancelled(true);
+                    return;
                 }
-                return;
-            }
-            if (event.getInventory() instanceof PlayerInventory){
-              gui.onBottomClick(event);
+                gui.onBottomClick(event);
             } else {
                 int slot = event.getSlot();
-                GUIItem item = gui.get(slot);
+                GUIItem visibleItem = RefreshSlotAction.getItem(gui, slot);
 
-                if (item == null) return;
+                if (visibleItem == null) return;
 
-                if (!item.canPickup()) {
-                    event.setCancelled(true);
-                } else if (!gui.allowHotkeying() && isHotKey(event)) {
+                if (!gui.allowHotkeying() && isHotKey(event)) {
                     event.setCancelled(true);
                     return;
                 }
 
-                if (item instanceof GUIClickableItem clickable) {
-                    clickable.run(event, player);
-                    if (!cursorItem.isNA() && player.getOpenInventory() != event.getInventory()
-                            && player.getOpenInventory() != null && event.getClickType() != ClickType.CHANGE_HELD) {
-                        player.addAndUpdateItem(cursorItem);
+                GUIItem.ClickContext context = new GUIItem.ClickContext(
+                        event.getCursorItem(),
+                        player,
+                        event.getClickType()
+                );
+
+                boolean canPickup = visibleItem.handleClickAndShouldAllow(context, event.getClickedItem());
+                if (!canPickup) {
+                    event.setCancelled(true);
+                } else {
+                    // Check that the same GUI is still open
+                    if (player.getOpenInventory() != event.getInventory()) {
+                        event.setCancelled(true);
                     }
                 }
+                new RefreshAction().execute(gui);
 
-                if (item instanceof GUIQueryItem query) {
-                    gui.onClose(new InventoryCloseEvent(
-                            player.getOpenInventory(),
-                            player,
-                            false
-                    ), SkyBlockInventoryGUI.CloseReason.SIGN_OPENED);
-
-                    new SkyBlockSignGUI(player).open(query.lines()).thenAccept(string -> {
-                        SkyBlockInventoryGUI nextGui = query.onQueryFinish(string, player);
-                        if (nextGui != null && string != null)
-                            nextGui.open(player);
-                    });
+                if (!cursorItem.isNA() && player.getOpenInventory() != event.getInventory()
+                        && player.getOpenInventory() != null && event.getClickType() != ClickType.CHANGE_HELD) {
+                    player.addAndUpdateItem(cursorItem);
                 }
             }
         }
@@ -118,4 +112,3 @@ public class ActionPlayerInventoryClick implements SkyBlockEventClass {
                 inventoryClick.getClickType().equals(ClickType.RIGHT_DRAGGING);
     }
 }
-

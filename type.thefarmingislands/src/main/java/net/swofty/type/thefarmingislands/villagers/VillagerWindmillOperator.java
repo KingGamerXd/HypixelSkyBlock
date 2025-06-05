@@ -4,6 +4,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.VillagerProfession;
+import net.minestom.server.entity.VillagerProfession;
 import net.swofty.types.generic.entity.villager.NPCVillagerDialogue;
 import net.swofty.types.generic.entity.villager.NPCVillagerParameters;
 

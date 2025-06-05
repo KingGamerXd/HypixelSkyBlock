@@ -1,17 +1,16 @@
 package net.swofty.types.generic.gui.inventory.inventories.sbmenu.collection;
 
+import net.kyori.adventure.text.Component;
 import net.minestom.server.event.inventory.InventoryCloseEvent;
 import net.minestom.server.event.inventory.InventoryPreClickEvent;
-import net.minestom.server.inventory.Inventory;
 import net.minestom.server.inventory.InventoryType;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
 import net.swofty.types.generic.collection.CollectionCategory;
 import net.swofty.types.generic.data.datapoints.DatapointCollection;
+import net.swofty.types.generic.gui.inventory.GUIItem;
 import net.swofty.types.generic.gui.inventory.ItemStackCreator;
-import net.swofty.types.generic.gui.inventory.SkyBlockPaginatedGUI;
-import net.swofty.types.generic.gui.inventory.item.GUIClickableItem;
-import net.swofty.types.generic.gui.inventory.item.GUIItem;
+import net.swofty.types.generic.gui.inventory.SkyBlockPaginatedInventory;
 import net.swofty.types.generic.user.SkyBlockPlayer;
 import net.swofty.types.generic.utility.PaginationList;
 
@@ -19,35 +18,54 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class GUICollectionCategory extends SkyBlockPaginatedGUI<CollectionCategory.ItemCollection> {
+public class GUICollectionCategory extends SkyBlockPaginatedInventory<CollectionCategory.ItemCollection> {
+    private static final String STATE_COLLECTION_LOCKED = "collection_locked";
+    private static final String STATE_COLLECTION_UNLOCKED = "collection_unlocked";
+
     private final CollectionCategory type;
     private final List<String> display;
 
     public GUICollectionCategory(CollectionCategory category, List<String> display) {
         super(InventoryType.CHEST_6_ROW);
-
         this.type = category;
         this.display = display;
     }
 
     @Override
-    public boolean allowHotkeying() {
-        return false;
-    }
+    public void handleOpen(SkyBlockPlayer player) {
+        fill(ItemStackCreator.createNamedItemStack(Material.BLACK_STAINED_GLASS_PANE, "").build());
 
-    @Override
-    public void onClose(InventoryCloseEvent e, CloseReason reason) {
+        // Close button
+        attachItem(GUIItem.builder(49)
+                .item(ItemStackCreator.createNamedItemStack(Material.BARRIER, "§cClose").build())
+                .onClick((ctx, item) -> {
+                    ctx.player().closeInventory();
+                    return true;
+                })
+                .build());
 
-    }
+        // Back button
+        attachItem(GUIItem.builder(48)
+                .item(ItemStackCreator.getStack("§aGo Back", Material.ARROW, 1,
+                        "§7To Collections").build())
+                .onClick((ctx, item) -> {
+                    ctx.player().openInventory(new GUICollections());
+                    return true;
+                })
+                .build());
 
-    @Override
-    public void suddenlyQuit(Inventory inventory, SkyBlockPlayer player) {
+        // Category info display
+        attachItem(GUIItem.builder(4)
+                .item(() -> {
+                    List<String> lore = new ArrayList<>();
+                    lore.add("§7View your " + type.getName() + " Collections!");
+                    lore.add(" ");
+                    lore.addAll(display);
 
-    }
-
-    @Override
-    public void onBottomClick(InventoryPreClickEvent e) {
-        e.setCancelled(true);
+                    return ItemStackCreator.getStack("§a" + type.getName() + " Collections",
+                            Material.STONE_PICKAXE, 1, lore).build();
+                })
+                .build());
     }
 
     @Override
@@ -67,86 +85,81 @@ public class GUICollectionCategory extends SkyBlockPaginatedGUI<CollectionCatego
     }
 
     @Override
-    protected boolean shouldFilterFromSearch(String query, CollectionCategory.ItemCollection item) {
+    public boolean shouldFilterFromSearch(String query, CollectionCategory.ItemCollection item) {
         return false;
     }
 
     @Override
     public void performSearch(SkyBlockPlayer player, String query, int page, int maxPage) {
-        border(ItemStackCreator.createNamedItemStack(Material.BLACK_STAINED_GLASS_PANE, ""));
-        set(GUIClickableItem.getCloseItem(49));
-        set(GUIClickableItem.getGoBackItem(48, new GUICollections()));
-        set(new GUIItem(4) {
-            @Override
-            public ItemStack.Builder getItem(SkyBlockPlayer player) {
-                List<String> lore = new ArrayList<>(List.of(
-                        "§7View your " + type.getName() + " Collections!",
-                        " "
-                ));
-
-                lore.addAll(display);
-
-                return ItemStackCreator.getStack("§a" + type.getName() + " Collections",
-                        Material.STONE_PICKAXE, 1, lore);
-            }
-        });
-
         if (page > 1) {
-            set(createNavigationButton(this, 45, query, page, false));
+            attachItem(createNavigationButton(45, query, page, false));
         }
         if (page < maxPage) {
-            set(createNavigationButton(this, 53, query, page, true));
+            attachItem(createNavigationButton(53, query, page, true));
         }
     }
 
     @Override
-    public String getTitle(SkyBlockPlayer player, String query, int page, PaginationList<CollectionCategory.ItemCollection> paged) {
-        return type.getName() + " Collections";
+    public Component getTitle(SkyBlockPlayer player, String query, int page, PaginationList<CollectionCategory.ItemCollection> paged) {
+        return Component.text(type.getName() + " Collections");
     }
 
     @Override
-    public GUIClickableItem createItemFor(CollectionCategory.ItemCollection item, int slot, SkyBlockPlayer player) {
+    public GUIItem createItemFor(CollectionCategory.ItemCollection item, int slot, SkyBlockPlayer player) {
         DatapointCollection.PlayerCollection collection = player.getCollection();
+        boolean isUnlocked = collection.unlocked(item.type());
 
-        if (!collection.unlocked(item.type())) {
-            return new GUIClickableItem(slot) {
-                @Override
-                public void run(InventoryPreClickEvent e, SkyBlockPlayer player) {
-                    player.sendMessage("§cYou haven't found this item yet!");
-                }
+        return GUIItem.builder(slot)
+                .requireState(isUnlocked ? STATE_COLLECTION_UNLOCKED : STATE_COLLECTION_LOCKED)
+                .item(() -> {
+                    if (!isUnlocked) {
+                        return ItemStackCreator.getStack(
+                                "§c" + item.type().getDisplayName(),
+                                Material.GRAY_DYE,
+                                1,
+                                "§7Find this item to add it to your",
+                                "§7collection and unlock collection",
+                                "§7rewards!").build();
+                    }
 
-                @Override
-                public ItemStack.Builder getItem(SkyBlockPlayer player) {
-                    return ItemStackCreator.getStack(
-                            "§c" + item.type().getDisplayName(), Material.GRAY_DYE, 1,
-                            "§7Find this item to add it to your",
-                            "§7collection and unlock collection",
-                            "§7rewards!");
-                }
-            };
-        }
+                    List<String> lore = new ArrayList<>();
+                    lore.add("§7View all your " + item.type().getDisplayName() + " Collection");
+                    lore.add("§7progress and rewards!");
+                    lore.add(" ");
+                    collection.getDisplay(lore, item);
+                    lore.add(" ");
+                    lore.add("§eClick to view!");
 
-        return new GUIClickableItem(slot) {
-            @Override
-            public void run(InventoryPreClickEvent e, SkyBlockPlayer player) {
-                new GUICollectionItem(item.type()).open(player);
-            }
+                    return ItemStackCreator.getStack("§e" + item.type().getDisplayName(),
+                            item.type().material,
+                            1,
+                            lore).build();
+                })
+                .onClick((ctx, clickedItem) -> {
+                    if (!isUnlocked) {
+                        ctx.player().sendMessage("§cYou haven't found this item yet!");
+                        return false;
+                    }
 
-            @Override
-            public ItemStack.Builder getItem(SkyBlockPlayer player) {
-                List<String> lore = new ArrayList<>(List.of(
-                        "§7View all your " + item.type().getDisplayName() + " Collection",
-                        "§7progress and rewards!",
-                        " "
-                ));
-
-                collection.getDisplay(lore, item);
-
-                lore.add(" ");
-                lore.add("§eClick to view!");
-
-                return ItemStackCreator.getStack("§e" + item.type().getDisplayName(), item.type().material, 1, lore);
-            }
-        };
+                    ctx.player().openInventory(new GUICollectionItem(item.type()));
+                    return true;
+                })
+                .build();
     }
+
+    @Override
+    public boolean allowHotkeying() {
+        return false;
+    }
+
+    @Override
+    public void onClose(InventoryCloseEvent event, CloseReason reason) {}
+
+    @Override
+    public void onBottomClick(InventoryPreClickEvent event) {
+        event.setCancelled(true);
+    }
+
+    @Override
+    public void onSuddenQuit(SkyBlockPlayer player) {}
 }

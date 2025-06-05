@@ -1,8 +1,8 @@
 package net.swofty.types.generic.gui.inventory.inventories.sbmenu.collection;
 
+import net.kyori.adventure.text.Component;
 import net.minestom.server.event.inventory.InventoryCloseEvent;
 import net.minestom.server.event.inventory.InventoryPreClickEvent;
-import net.minestom.server.inventory.Inventory;
 import net.minestom.server.inventory.InventoryType;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
@@ -10,11 +10,11 @@ import net.swofty.commons.StringUtility;
 import net.swofty.commons.item.ItemType;
 import net.swofty.types.generic.data.DataHandler;
 import net.swofty.types.generic.data.datapoints.DatapointMinionData;
+import net.swofty.types.generic.gui.inventory.GUIItem;
 import net.swofty.types.generic.gui.inventory.ItemStackCreator;
-import net.swofty.types.generic.gui.inventory.SkyBlockInventoryGUI;
-import net.swofty.types.generic.gui.inventory.SkyBlockPaginatedGUI;
+import net.swofty.types.generic.gui.inventory.SkyBlockAbstractInventory;
+import net.swofty.types.generic.gui.inventory.SkyBlockPaginatedInventory;
 import net.swofty.types.generic.gui.inventory.inventories.sbmenu.recipe.GUIMinionRecipes;
-import net.swofty.types.generic.gui.inventory.item.GUIClickableItem;
 import net.swofty.types.generic.item.SkyBlockItem;
 import net.swofty.types.generic.item.components.MinionComponent;
 import net.swofty.types.generic.minion.MinionRegistry;
@@ -24,13 +24,40 @@ import net.swofty.types.generic.utility.PaginationList;
 
 import java.util.*;
 
-public class GUICraftedMinions extends SkyBlockPaginatedGUI<SkyBlockItem> {
+public class GUICraftedMinions extends SkyBlockPaginatedInventory<SkyBlockItem> {
+    private static final String STATE_MINION_UNLOCKED = "minion_unlocked";
+    private static final String STATE_MINION_LOCKED = "minion_locked";
+    private static final String STATE_MINION_MAXED = "minion_maxed";
 
-    SkyBlockInventoryGUI previousGUI;
+    private final SkyBlockAbstractInventory previousGUI;
 
-    public GUICraftedMinions(SkyBlockInventoryGUI previousGUI) {
+    public GUICraftedMinions(SkyBlockAbstractInventory previousGUI) {
         super(InventoryType.CHEST_6_ROW);
         this.previousGUI = previousGUI;
+    }
+
+    @Override
+    public void handleOpen(SkyBlockPlayer player) {
+        fill(ItemStackCreator.createNamedItemStack(Material.BLACK_STAINED_GLASS_PANE, "").build());
+
+        // Close button
+        attachItem(GUIItem.builder(49)
+                .item(ItemStackCreator.createNamedItemStack(Material.BARRIER, "§cClose").build())
+                .onClick((ctx, item) -> {
+                    ctx.player().closeInventory();
+                    return true;
+                })
+                .build());
+
+        // Back button
+        attachItem(GUIItem.builder(48)
+                .item(ItemStackCreator.getStack("§aGo Back", Material.ARROW, 1,
+                        "§7To " + previousGUI.getTitleAsString()).build())
+                .onClick((ctx, item) -> {
+                    ctx.player().openInventory(previousGUI);
+                    return true;
+                })
+                .build());
     }
 
     @Override
@@ -44,85 +71,85 @@ public class GUICraftedMinions extends SkyBlockPaginatedGUI<SkyBlockItem> {
     }
 
     @Override
-    protected PaginationList<SkyBlockItem> fillPaged(SkyBlockPlayer player, PaginationList<SkyBlockItem> paged) {
-        paged.addAll(Arrays.stream(ItemType.values()).map(SkyBlockItem::new).toList());
-        paged.removeIf(item -> !(item.hasComponent(MinionComponent.class)));
+    public PaginationList<SkyBlockItem> fillPaged(SkyBlockPlayer player, PaginationList<SkyBlockItem> paged) {
+        paged.addAll(Arrays.stream(ItemType.values())
+                .map(SkyBlockItem::new)
+                .filter(item -> item.hasComponent(MinionComponent.class))
+                .toList());
         return paged;
     }
 
     @Override
-    protected boolean shouldFilterFromSearch(String query, SkyBlockItem item) {
+    public boolean shouldFilterFromSearch(String query, SkyBlockItem item) {
         return false;
     }
 
     @Override
-    protected void performSearch(SkyBlockPlayer player, String query, int page, int maxPage) {
-        border(ItemStackCreator.createNamedItemStack(Material.BLACK_STAINED_GLASS_PANE, ""));
-        set(GUIClickableItem.getCloseItem(49));
-        set(GUIClickableItem.getGoBackItem(48, previousGUI));
-
+    public void performSearch(SkyBlockPlayer player, String query, int page, int maxPage) {
         if (page > 1) {
-            set(createNavigationButton(this, 45, query, page, false));
+            attachItem(createNavigationButton(45, query, page, false));
         }
         if (page < maxPage) {
-            set(createNavigationButton(this, 53, query, page, true));
+            attachItem(createNavigationButton(53, query, page, true));
         }
     }
 
     @Override
-    protected String getTitle(SkyBlockPlayer player, String query, int page, PaginationList<SkyBlockItem> paged) {
-        return "Crafted Minions";
+    public Component getTitle(SkyBlockPlayer player, String query, int page, PaginationList<SkyBlockItem> paged) {
+        return Component.text("Crafted Minions");
     }
 
     @Override
-    protected GUIClickableItem createItemFor(SkyBlockItem item, int slot, SkyBlockPlayer player) {
+    public GUIItem createItemFor(SkyBlockItem item, int slot, SkyBlockPlayer player) {
+        MinionRegistry minionRegistry = item.getAttributeHandler().getMinionType();
+        DatapointMinionData.ProfileMinionData playerData = player.getDataHandler()
+                .get(DataHandler.Data.MINION_DATA, DatapointMinionData.class).getValue();
 
-        return new GUIClickableItem(slot) {
-            @Override
-            public void run(InventoryPreClickEvent e, SkyBlockPlayer player) {
-                if (e.getClickedItem().material() != Material.GRAY_DYE) {
-                    new GUIMinionRecipes(item.getAttributeHandler().getMinionType(), new GUICraftedMinions(new GUICollections())).open(player);
-                }
-            }
+        List<Integer> tiers = playerData.craftedMinions().stream()
+                .filter(entry -> Objects.equals(entry.getKey(), minionRegistry.name()))
+                .map(Map.Entry::getValue)
+                .findFirst()
+                .orElse(List.of());
 
-            @Override
-            public ItemStack.Builder getItem(SkyBlockPlayer player) {
-                ItemStack.Builder itemStack;
-                MinionRegistry minionRegistry = item.getAttributeHandler().getMinionType();
-                DatapointMinionData.ProfileMinionData playerData = player.getDataHandler().get(DataHandler.Data.MINION_DATA, DatapointMinionData.class).getValue();
-                ArrayList<String> lore = new ArrayList<>();
-                List<Integer> tiers = List.of();
-                boolean unlocked = false;
-                Integer minionAmount = 0;
+        boolean unlocked = !tiers.isEmpty();
+        int minionAmount = tiers.size();
+        boolean maxed = minionAmount == minionRegistry.asSkyBlockMinion().getTiers().size();
 
-                for (Map.Entry<String, List<Integer>> minion : playerData.craftedMinions()) {
-                    if (Objects.equals(minion.getKey(), minionRegistry.name())) {
-                        tiers = minion.getValue();
+        return GUIItem.builder(slot)
+                .requireState(unlocked ? (maxed ? STATE_MINION_MAXED : STATE_MINION_UNLOCKED) : STATE_MINION_LOCKED)
+                .item(() -> {
+                    if (!unlocked) {
+                        return ItemStackCreator.getStack("§c" + StringUtility.toNormalCase(minionRegistry.name()) + " Minion",
+                                Material.GRAY_DYE, 1, "§7You haven't crafted this minion.").build();
                     }
-                }
-                for (SkyBlockMinion.MinionTier minionTier : minionRegistry.asSkyBlockMinion().getTiers()) {
-                    if (tiers.contains(minionTier.tier())) {
-                        lore.add("§a✔ Tier " + StringUtility.getAsRomanNumeral(minionTier.tier()));
-                        unlocked = true;
-                        minionAmount++;
-                    } else {
-                        lore.add("§c✖ Tier " + StringUtility.getAsRomanNumeral(minionTier.tier()));
+
+                    ArrayList<String> lore = new ArrayList<>();
+                    for (SkyBlockMinion.MinionTier minionTier : minionRegistry.asSkyBlockMinion().getTiers()) {
+                        if (tiers.contains(minionTier.tier())) {
+                            lore.add("§a✔ Tier " + StringUtility.getAsRomanNumeral(minionTier.tier()));
+                        } else {
+                            lore.add("§c✖ Tier " + StringUtility.getAsRomanNumeral(minionTier.tier()));
+                        }
                     }
-                }
-                if (unlocked) {
+
                     lore.add("");
                     lore.add("§eClick to view recipes!");
-                    String color;
-                    color = (minionAmount == minionRegistry.asSkyBlockMinion().getTiers().size()) ? "§a" : "§e";
-                    itemStack = ItemStackCreator.getStackHead(color + StringUtility.toNormalCase(minionRegistry.name()) + " Minion",
-                            minionRegistry.asSkyBlockMinion().getTiers().getFirst().texture(), 1, lore);
-                } else {
-                    itemStack = ItemStackCreator.getStack("§c" + StringUtility.toNormalCase(minionRegistry.name()) + " Minion",
-                            Material.GRAY_DYE, 1, "§7You haven't crafted this minion.");
-                }
-                return itemStack;
-            }
-        };
+
+                    String color = maxed ? "§a" : "§e";
+                    return ItemStackCreator.getStackHead(
+                            color + StringUtility.toNormalCase(minionRegistry.name()) + " Minion",
+                            minionRegistry.asSkyBlockMinion().getTiers().getFirst().texture(),
+                            1,
+                            lore).build();
+                })
+                .onClick((ctx, clickedItem) -> {
+                    if (!unlocked) return false;
+
+                    ctx.player().openInventory(new GUIMinionRecipes(minionRegistry,
+                            new GUICraftedMinions(new GUICollections())));
+                    return true;
+                })
+                .build();
     }
 
     @Override
@@ -131,16 +158,13 @@ public class GUICraftedMinions extends SkyBlockPaginatedGUI<SkyBlockItem> {
     }
 
     @Override
-    public void onClose(InventoryCloseEvent e, CloseReason reason) {
+    public void onClose(InventoryCloseEvent event, CloseReason reason) {}
+
+    @Override
+    public void onBottomClick(InventoryPreClickEvent event) {
+        event.setCancelled(true);
     }
 
     @Override
-    public void suddenlyQuit(Inventory inventory, SkyBlockPlayer player) {
-
-    }
-
-    @Override
-    public void onBottomClick(InventoryPreClickEvent e) {
-        e.setCancelled(true);
-    }
+    public void onSuddenQuit(SkyBlockPlayer player) {}
 }

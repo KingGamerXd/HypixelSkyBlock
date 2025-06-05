@@ -1,12 +1,14 @@
 package net.swofty.types.generic.gui.inventory.inventories.sbmenu.levels.emblem;
 
+import net.kyori.adventure.text.Component;
+import net.minestom.server.event.inventory.InventoryCloseEvent;
 import net.minestom.server.event.inventory.InventoryPreClickEvent;
 import net.minestom.server.inventory.InventoryType;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
+import net.swofty.types.generic.gui.inventory.GUIItem;
 import net.swofty.types.generic.gui.inventory.ItemStackCreator;
-import net.swofty.types.generic.gui.inventory.SkyBlockPaginatedGUI;
-import net.swofty.types.generic.gui.inventory.item.GUIClickableItem;
+import net.swofty.types.generic.gui.inventory.SkyBlockPaginatedInventory;
 import net.swofty.types.generic.levels.SkyBlockEmblems;
 import net.swofty.types.generic.levels.abstr.CauseEmblem;
 import net.swofty.types.generic.user.SkyBlockPlayer;
@@ -15,23 +17,42 @@ import net.swofty.types.generic.utility.PaginationList;
 import java.util.ArrayList;
 import java.util.List;
 
-public class GUIEmblem extends SkyBlockPaginatedGUI<SkyBlockEmblems.SkyBlockEmblem> {
+public class GUIEmblem extends SkyBlockPaginatedInventory<SkyBlockEmblems.SkyBlockEmblem> {
+    private static final String STATE_EMBLEM_UNLOCKED = "emblem_unlocked";
+    private static final String STATE_EMBLEM_LOCKED = "emblem_locked";
+
     private final SkyBlockEmblems emblemCategory;
 
     public GUIEmblem(SkyBlockEmblems emblemCategory) {
         super(InventoryType.CHEST_5_ROW);
-
         this.emblemCategory = emblemCategory;
     }
 
     @Override
-    public boolean allowHotkeying() {
-        return false;
-    }
+    public void handleOpen(SkyBlockPlayer player) {
+        fill(ItemStackCreator.createNamedItemStack(Material.BLACK_STAINED_GLASS_PANE, "").build());
 
-    @Override
-    public void onBottomClick(InventoryPreClickEvent e) {
-        e.setCancelled(true);
+        // Close button
+        attachItem(GUIItem.builder(40)
+                .item(ItemStackCreator.createNamedItemStack(Material.BARRIER, "§cClose").build())
+                .onClick((ctx, item) -> {
+                    ctx.player().closeInventory();
+                    return true;
+                })
+                .build());
+
+        // Search item
+        attachItem(createSearchItem(41, currentQuery));
+
+        // Back button
+        attachItem(GUIItem.builder(39)
+                .item(ItemStackCreator.getStack("§aGo Back", Material.ARROW, 1,
+                        "§7To Emblems").build())
+                .onClick((ctx, item) -> {
+                    ctx.player().openInventory(new GUIEmblems());
+                    return true;
+                })
+                .build());
     }
 
     @Override
@@ -56,66 +77,77 @@ public class GUIEmblem extends SkyBlockPaginatedGUI<SkyBlockEmblems.SkyBlockEmbl
 
     @Override
     public void performSearch(SkyBlockPlayer player, String query, int page, int maxPage) {
-        border(ItemStackCreator.createNamedItemStack(Material.BLACK_STAINED_GLASS_PANE, ""));
-        set(GUIClickableItem.getCloseItem(40));
-        set(createSearchItem(this, 41, query));
-        set(GUIClickableItem.getGoBackItem(39, new GUIEmblems()));
-
         if (page > 1) {
-            set(createNavigationButton(this, 36, query, page, false));
+            attachItem(createNavigationButton(36, query, page, false));
         }
         if (page < maxPage) {
-            set(createNavigationButton(this, 44, query, page, true));
+            attachItem(createNavigationButton(44, query, page, true));
         }
     }
 
     @Override
-    public String getTitle(SkyBlockPlayer player, String query, int page, PaginationList<SkyBlockEmblems.SkyBlockEmblem> paged) {
-        return "Emblems - " + emblemCategory.toString() + " (" + page + "/" + paged.getPageCount() + ")";
+    public Component getTitle(SkyBlockPlayer player, String query, int page, PaginationList<SkyBlockEmblems.SkyBlockEmblem> paged) {
+        return Component.text("Emblems - " + emblemCategory.toString() + " (" + page + "/" + paged.getPageCount() + ")");
     }
 
     @Override
-    public GUIClickableItem createItemFor(SkyBlockEmblems.SkyBlockEmblem item, int slot, SkyBlockPlayer player) {
+    public GUIItem createItemFor(SkyBlockEmblems.SkyBlockEmblem item, int slot, SkyBlockPlayer player) {
         boolean unlocked = player.hasUnlockedXPCause(item.cause());
         CauseEmblem causeEmblem = (CauseEmblem) item.cause();
 
-        return new GUIClickableItem(slot) {
-            @Override
-            public void run(InventoryPreClickEvent e, SkyBlockPlayer player) {
-                if (!unlocked) {
-                    player.sendMessage("§cYou have not unlocked this emblem yet!");
-                    return;
-                }
+        return GUIItem.builder(slot)
+                .requireState(unlocked ? STATE_EMBLEM_UNLOCKED : STATE_EMBLEM_LOCKED)
+                .item(() -> {
+                    String name = (unlocked ? "§a" : "§c") + item.displayName() + " " + item.emblem();
+                    List<String> lore = new ArrayList<>();
 
-                player.getSkyBlockExperience().setEmblem(emblemCategory, item);
-                player.sendMessage("§aYou have selected the " + item.displayName() + " emblem!");
-            }
+                    if (unlocked) {
+                        lore.addAll(List.of(
+                                "§8" + causeEmblem.emblemEisplayName(),
+                                " ",
+                                "§7Preview: " + player.getFullDisplayName(item),
+                                " ",
+                                "§eClick to select!"
+                        ));
+                    } else {
+                        lore.addAll(List.of(
+                                "§8Locked",
+                                " ",
+                                "§c" + causeEmblem.getEmblemRequiresMessage()
+                        ));
+                    }
 
-            @Override
-            public ItemStack.Builder getItem(SkyBlockPlayer player) {
-                String name = (unlocked ? "§a" : "§c") + item.displayName() + " " + item.emblem();
+                    return ItemStackCreator.getStack(name,
+                            unlocked ? item.displayMaterial() : Material.GRAY_DYE,
+                            1,
+                            lore).build();
+                })
+                .onClick((ctx, clickedItem) -> {
+                    if (!unlocked) {
+                        ctx.player().sendMessage("§cYou have not unlocked this emblem yet!");
+                        return false;
+                    }
 
-                List<String> lore;
-                if (unlocked) {
-                    lore = new ArrayList<>(List.of(
-                            "§8" + causeEmblem.emblemEisplayName(),
-                            " ",
-                            "§7Preview: " + player.getFullDisplayName(item),
-                            " ",
-                            "§eClick to select!"
-                    ));
-                } else {
-                    lore = new ArrayList<>(List.of(
-                            "§8Locked",
-                            " ",
-                            "§c" + causeEmblem.getEmblemRequiresMessage()
-                    ));
-                }
-
-                return ItemStackCreator.getStack(name,
-                        unlocked ? item.displayMaterial() : Material.GRAY_DYE,
-                        1, lore);
-            }
-        };
+                    ctx.player().getSkyBlockExperience().setEmblem(emblemCategory, item);
+                    ctx.player().sendMessage("§aYou have selected the " + item.displayName() + " emblem!");
+                    return true;
+                })
+                .build();
     }
+
+    @Override
+    public boolean allowHotkeying() {
+        return false;
+    }
+
+    @Override
+    public void onClose(InventoryCloseEvent event, CloseReason reason) {}
+
+    @Override
+    public void onBottomClick(InventoryPreClickEvent event) {
+        event.setCancelled(true);
+    }
+
+    @Override
+    public void onSuddenQuit(SkyBlockPlayer player) {}
 }
