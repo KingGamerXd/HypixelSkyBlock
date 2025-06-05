@@ -46,7 +46,7 @@ public abstract class SkyBlockAbstractInventory extends Inventory {
                 return false;
             }
 
-            previousInventory.onClose(new InventoryCloseEvent(previousInventory, player), CloseReason.SERVER_EXITED);
+            previousInventory.onClose(new InventoryCloseEvent(previousInventory, player , false), CloseReason.SERVER_EXITED);
             previousInventory.stopAllLoops();
             GUI_MAP.remove(player.getUuid());
 
@@ -76,7 +76,7 @@ public abstract class SkyBlockAbstractInventory extends Inventory {
     @Override
     public boolean removeViewer(@NotNull Player player) {
         CloseReason reason = player.didCloseInventory() ? CloseReason.PLAYER_EXITED : CloseReason.SERVER_EXITED;
-        onClose(new InventoryCloseEvent(this, player), reason);
+        onClose(new InventoryCloseEvent(this, player , false), reason);
         stopAllLoops();
         GUI_MAP.remove(player.getUuid());
 

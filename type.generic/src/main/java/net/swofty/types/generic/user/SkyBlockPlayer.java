@@ -36,7 +36,6 @@ import net.swofty.types.generic.event.value.SkyBlockValueEvent;
 import net.swofty.types.generic.event.value.ValueUpdateEvent;
 import net.swofty.types.generic.event.value.events.MaxHealthValueUpdateEvent;
 import net.swofty.types.generic.event.value.events.MiningValueUpdateEvent;
-import net.swofty.types.generic.gui.inventory.SkyBlockInventoryGUI;
 import net.swofty.types.generic.item.SkyBlockItem;
 import net.swofty.types.generic.item.components.AccessoryComponent;
 import net.swofty.types.generic.item.components.ArrowComponent;
@@ -748,19 +747,6 @@ public class SkyBlockPlayer extends Player {
         super.sendMessage(message.replace("&", "§"));
     }
 
-    @Override
-    public void closeInventory() {
-        Inventory tempInv = (Inventory) this.getOpenInventory();
-        super.closeInventory();
-        if (SkyBlockInventoryGUI.GUI_MAP.containsKey(this.getUuid())) {
-            SkyBlockInventoryGUI gui = SkyBlockInventoryGUI.GUI_MAP.get(this.getUuid());
-
-            if (gui == null) return;
-            if (tempInv == null) return;
-            gui.onClose(new InventoryCloseEvent(tempInv, this , true), SkyBlockInventoryGUI.CloseReason.SERVER_EXITED);
-            SkyBlockInventoryGUI.GUI_MAP.remove(this.getUuid());
-        }
-    }
 
     public static String getDisplayName(UUID uuid) {
         if (SkyBlockGenericLoader.getLoadedPlayers().stream().anyMatch(player -> player.getUuid().equals(uuid))) {
