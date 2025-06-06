@@ -46,7 +46,7 @@ public abstract class SkyBlockAbstractInventory extends Inventory {
                 return false;
             }
 
-            previousInventory.onClose(new InventoryCloseEvent(previousInventory, player , false), CloseReason.SERVER_EXITED);
+            previousInventory.onClose(new InventoryCloseEvent(previousInventory, player, false), CloseReason.SERVER_EXITED);
             previousInventory.stopAllLoops();
             GUI_MAP.remove(player.getUuid());
 
@@ -76,7 +76,7 @@ public abstract class SkyBlockAbstractInventory extends Inventory {
     @Override
     public boolean removeViewer(@NotNull Player player) {
         CloseReason reason = player.didCloseInventory() ? CloseReason.PLAYER_EXITED : CloseReason.SERVER_EXITED;
-        onClose(new InventoryCloseEvent(this, player , false), reason);
+        onClose(new InventoryCloseEvent(this, player, false), reason);
         stopAllLoops();
         GUI_MAP.remove(player.getUuid());
 
@@ -89,9 +89,13 @@ public abstract class SkyBlockAbstractInventory extends Inventory {
     }
 
     public abstract void handleOpen(SkyBlockPlayer player);
+
     public abstract void onClose(InventoryCloseEvent event, CloseReason reason);
+
     public abstract void onBottomClick(InventoryPreClickEvent event);
+
     public abstract void onSuddenQuit(SkyBlockPlayer player);
+
     public abstract boolean allowHotkeying();
 
     public void open(SkyBlockPlayer player) {
@@ -103,47 +107,111 @@ public abstract class SkyBlockAbstractInventory extends Inventory {
         fill(item, 0, this.getInventoryType().getSize() - 1);
     }
 
-    protected void fill(ItemStack item, int startSlot, int endSlot) {
-        fill(item, startSlot, endSlot, false);
+    protected void fill(ItemStack item, int cornerSlot1, int cornerSlot2) {
+        fill(item, cornerSlot1, cornerSlot2, false);
     }
 
-    protected void fill(ItemStack item, int startSlot, int endSlot, boolean overwrite) {
-        for (int slot = startSlot; slot <= endSlot; slot++) {
-            if (!overwrite && !getItemsInSlot(slot).isEmpty()) continue;
+    protected void fill(ItemStack item, int cornerSlot1, int cornerSlot2, boolean overwrite) {
+        if (cornerSlot1 < 0 || cornerSlot1 >= getInventoryType().getSize()) {
+            throw new IllegalArgumentException("cornerSlot1 is out of bounds");
+        }
+        if (cornerSlot2 < 0 || cornerSlot2 >= getInventoryType().getSize()) {
+            throw new IllegalArgumentException("cornerSlot2 is out of bounds");
+        }
 
-            attachItem(GUIItem.builder(slot)
-                    .item(item)
-                    .build());
+        int startRow = Math.min(cornerSlot1 / 9, cornerSlot2 / 9);
+        int endRow = Math.max(cornerSlot1 / 9, cornerSlot2 / 9);
+        int startCol = Math.min(cornerSlot1 % 9, cornerSlot2 % 9);
+        int endCol = Math.max(cornerSlot1 % 9, cornerSlot2 % 9);
+
+        for (int row = startRow; row <= endRow; row++) {
+            for (int col = startCol; col <= endCol; col++) {
+                int slot = row * 9 + col;
+
+                boolean slotOccupied = !getItemsInSlot(slot).isEmpty();
+                if (slotOccupied && !overwrite) {
+                    continue;
+                }
+
+                attachItem(GUIItem.builder(slot)
+                        .item(item)
+                        .build());
+            }
         }
         doAction(new RefreshAction());
     }
 
-    protected void fillWithState(ItemStack item, String state, int startSlot, int endSlot) {
-        for (int slot = startSlot; slot <= endSlot; slot++) {
-            attachItem(GUIItem.builder(slot)
-                    .item(item)
-                    .requireState(state)
-                    .build());
+    protected void fillWithState(ItemStack item, String state, int cornerSlot1, int cornerSlot2) {
+        if (cornerSlot1 < 0 || cornerSlot1 >= getInventoryType().getSize()) {
+            throw new IllegalArgumentException("cornerSlot1 is out of bounds");
+        }
+        if (cornerSlot2 < 0 || cornerSlot2 >= getInventoryType().getSize()) {
+            throw new IllegalArgumentException("cornerSlot2 is out of bounds");
+        }
+
+        int startRow = Math.min(cornerSlot1 / 9, cornerSlot2 / 9);
+        int endRow = Math.max(cornerSlot1 / 9, cornerSlot2 / 9);
+        int startCol = Math.min(cornerSlot1 % 9, cornerSlot2 % 9);
+        int endCol = Math.max(cornerSlot1 % 9, cornerSlot2 % 9);
+
+        for (int row = startRow; row <= endRow; row++) {
+            for (int col = startCol; col <= endCol; col++) {
+                int slot = row * 9 + col;
+                attachItem(GUIItem.builder(slot)
+                        .item(item)
+                        .requireState(state)
+                        .build());
+            }
         }
         doAction(new RefreshAction());
     }
 
-    protected void fillWithStates(ItemStack item, String[] states, int startSlot, int endSlot) {
-        for (int slot = startSlot; slot <= endSlot; slot++) {
-            attachItem(GUIItem.builder(slot)
-                    .item(item)
-                    .requireStates(states)
-                    .build());
+    protected void fillWithStates(ItemStack item, String[] states, int cornerSlot1, int cornerSlot2) {
+        if (cornerSlot1 < 0 || cornerSlot1 >= getInventoryType().getSize()) {
+            throw new IllegalArgumentException("cornerSlot1 is out of bounds");
+        }
+        if (cornerSlot2 < 0 || cornerSlot2 >= getInventoryType().getSize()) {
+            throw new IllegalArgumentException("cornerSlot2 is out of bounds");
+        }
+
+        int startRow = Math.min(cornerSlot1 / 9, cornerSlot2 / 9);
+        int endRow = Math.max(cornerSlot1 / 9, cornerSlot2 / 9);
+        int startCol = Math.min(cornerSlot1 % 9, cornerSlot2 % 9);
+        int endCol = Math.max(cornerSlot1 % 9, cornerSlot2 % 9);
+
+        for (int row = startRow; row <= endRow; row++) {
+            for (int col = startCol; col <= endCol; col++) {
+                int slot = row * 9 + col;
+                attachItem(GUIItem.builder(slot)
+                        .item(item)
+                        .requireStates(states)
+                        .build());
+            }
         }
         doAction(new RefreshAction());
     }
 
-    protected void fillWithAnyStates(ItemStack item, String[] states, int startSlot, int endSlot) {
-        for (int slot = startSlot; slot <= endSlot; slot++) {
-            attachItem(GUIItem.builder(slot)
-                    .item(item)
-                    .requireAnyState(states)
-                    .build());
+    protected void fillWithAnyStates(ItemStack item, String[] states, int cornerSlot1, int cornerSlot2) {
+        if (cornerSlot1 < 0 || cornerSlot1 >= getInventoryType().getSize()) {
+            throw new IllegalArgumentException("cornerSlot1 is out of bounds");
+        }
+        if (cornerSlot2 < 0 || cornerSlot2 >= getInventoryType().getSize()) {
+            throw new IllegalArgumentException("cornerSlot2 is out of bounds");
+        }
+
+        int startRow = Math.min(cornerSlot1 / 9, cornerSlot2 / 9);
+        int endRow = Math.max(cornerSlot1 / 9, cornerSlot2 / 9);
+        int startCol = Math.min(cornerSlot1 % 9, cornerSlot2 % 9);
+        int endCol = Math.max(cornerSlot1 % 9, cornerSlot2 % 9);
+
+        for (int row = startRow; row <= endRow; row++) {
+            for (int col = startCol; col <= endCol; col++) {
+                int slot = row * 9 + col;
+                attachItem(GUIItem.builder(slot)
+                        .item(item)
+                        .requireAnyState(states)
+                        .build());
+            }
         }
         doAction(new RefreshAction());
     }
@@ -152,108 +220,149 @@ public abstract class SkyBlockAbstractInventory extends Inventory {
         border(item, 0, getInventoryType().getSize() - 1);
     }
 
-    protected void border(ItemStack item, int startSlot, int endSlot) {
-        border(item, startSlot, endSlot, true);
+    protected void border(ItemStack item, int cornerSlot1, int cornerSlot2) {
+        border(item, cornerSlot1, cornerSlot2, true);
     }
 
-    protected void border(ItemStack item, int startSlot, int endSlot, boolean overwrite) {
-        if (startSlot < 0 || startSlot > getInventoryType().getSize())
-            throw new IllegalArgumentException("Corner 1 of the border described is out of bounds");
-        if (endSlot < 0 || endSlot > getInventoryType().getSize())
-            throw new IllegalArgumentException("Corner 2 of the border described is out of bounds");
+    protected void border(ItemStack item, int cornerSlot1, int cornerSlot2, boolean overwrite) {
+        if (cornerSlot1 < 0 || cornerSlot1 >= getSize()) {
+            throw new IllegalArgumentException("Corner 1 is out of bounds");
+        }
+        if (cornerSlot2 < 0 || cornerSlot2 >= getSize()) {
+            throw new IllegalArgumentException("Corner 2 is out of bounds");
+        }
 
-        int topLeft = Math.min(startSlot, endSlot);
-        int bottomRight = Math.max(startSlot, endSlot);
-        int topRight;
-        for (topRight = bottomRight; topRight > topLeft; topRight -= 9);
-        int bottomLeft;
-        for (bottomLeft = topLeft; bottomLeft < bottomRight; bottomLeft += 9);
-        topRight += 9;
-        bottomLeft -= 9;
+        int minSlot = Math.min(cornerSlot1, cornerSlot2);
+        int maxSlot = Math.max(cornerSlot1, cornerSlot2);
 
-        for (int y = topLeft; y <= bottomLeft; y += 9) {
-            for (int x = y; x <= topRight - topLeft + y; x++) {
-                if (!overwrite && !getItemsInSlot(x).isEmpty()) continue;
+        int minRow = minSlot / 9;
+        int maxRow = maxSlot / 9;
+        int minCol = minSlot % 9;
+        int maxCol = maxSlot % 9;
 
-                if (y == topLeft || y == bottomLeft || x == y || x == topRight - topLeft + y) {
-                    attachItem(GUIItem.builder(x)
+        for (int row = minRow; row <= maxRow; row++) {
+            for (int col = minCol; col <= maxCol; col++) {
+                boolean isTopOrBottomRow = row == minRow || row == maxRow;
+                boolean isLeftOrRightCol = col == minCol || col == maxCol;
+
+                if (isTopOrBottomRow || isLeftOrRightCol) {
+                    int slot = row * 9 + col;
+
+                    boolean occupied = !getItemsInSlot(slot).isEmpty();
+                    if (occupied && !overwrite) {
+                        continue;
+                    }
+                    attachItem(GUIItem.builder(slot)
                             .item(item)
                             .build());
                 }
             }
         }
-
         doAction(new RefreshAction());
     }
 
-    protected void borderWithState(ItemStack item, String state, int startSlot, int endSlot) {
-        int topLeft = Math.min(startSlot, endSlot);
-        int bottomRight = Math.max(startSlot, endSlot);
-        int topRight;
-        for (topRight = bottomRight; topRight > topLeft; topRight -= 9) ;
-        int bottomLeft;
-        for (bottomLeft = topLeft; bottomLeft < bottomRight; bottomLeft += 9) ;
-        topRight += 9;
-        bottomLeft -= 9;
+    protected void borderWithState(ItemStack item, String state, int cornerSlot1, int cornerSlot2) {
+        if (cornerSlot1 < 0 || cornerSlot1 >= getSize()) {
+            throw new IllegalArgumentException("Corner 1 is out of bounds");
+        }
+        if (cornerSlot2 < 0 || cornerSlot2 >= getSize()) {
+            throw new IllegalArgumentException("Corner 2 is out of bounds");
+        }
 
-        for (int y = topLeft; y <= bottomLeft; y += 9) {
-            for (int x = y; x <= topRight - topLeft + y; x++) {
-                if (y == topLeft || y == bottomLeft || x == y || x == topRight - topLeft + y) {
-                    attachItem(GUIItem.builder(x)
+        int minSlot = Math.min(cornerSlot1, cornerSlot2);
+        int maxSlot = Math.max(cornerSlot1, cornerSlot2);
+
+        int minRow = minSlot / 9;
+        int maxRow = maxSlot / 9;
+        int minCol = minSlot % 9;
+        int maxCol = maxSlot % 9;
+
+        for (int row = minRow; row <= maxRow; row++) {
+            for (int col = minCol; col <= maxCol; col++) {
+                boolean isTopOrBottomRow = row == minRow || row == maxRow;
+                boolean isLeftOrRightCol = col == minCol || col == maxCol;
+
+                if (isTopOrBottomRow || isLeftOrRightCol) {
+                    int slot = row * 9 + col;
+                    attachItem(GUIItem.builder(slot)
                             .item(item)
                             .requireState(state)
                             .build());
                 }
             }
         }
+
         doAction(new RefreshAction());
     }
 
-    protected void borderWithStates(ItemStack item, String[] states, int startSlot, int endSlot) {
-        int topLeft = Math.min(startSlot, endSlot);
-        int bottomRight = Math.max(startSlot, endSlot);
-        int topRight;
-        for (topRight = bottomRight; topRight > topLeft; topRight -= 9) ;
-        int bottomLeft;
-        for (bottomLeft = topLeft; bottomLeft < bottomRight; bottomLeft += 9) ;
-        topRight += 9;
-        bottomLeft -= 9;
+    protected void borderWithStates(ItemStack item, String[] states, int cornerSlot1, int cornerSlot2) {
+        if (cornerSlot1 < 0 || cornerSlot1 >= getSize()) {
+            throw new IllegalArgumentException("Corner 1 is out of bounds");
+        }
+        if (cornerSlot2 < 0 || cornerSlot2 >= getSize()) {
+            throw new IllegalArgumentException("Corner 2 is out of bounds");
+        }
 
-        for (int y = topLeft; y <= bottomLeft; y += 9) {
-            for (int x = y; x <= topRight - topLeft + y; x++) {
-                if (y == topLeft || y == bottomLeft || x == y || x == topRight - topLeft + y) {
-                    attachItem(GUIItem.builder(x)
+        int minSlot = Math.min(cornerSlot1, cornerSlot2);
+        int maxSlot = Math.max(cornerSlot1, cornerSlot2);
+
+        int minRow = minSlot / 9;
+        int maxRow = maxSlot / 9;
+        int minCol = minSlot % 9;
+        int maxCol = maxSlot % 9;
+
+        for (int row = minRow; row <= maxRow; row++) {
+            for (int col = minCol; col <= maxCol; col++) {
+                boolean isTopOrBottomRow = row == minRow || row == maxRow;
+                boolean isLeftOrRightCol = col == minCol || col == maxCol;
+
+                if (isTopOrBottomRow || isLeftOrRightCol) {
+                    int slot = row * 9 + col;
+                    attachItem(GUIItem.builder(slot)
                             .item(item)
                             .requireStates(states)
                             .build());
                 }
             }
         }
+
         doAction(new RefreshAction());
     }
 
-    protected void borderWithAnyStates(ItemStack item, String[] states, int startSlot, int endSlot) {
-        int topLeft = Math.min(startSlot, endSlot);
-        int bottomRight = Math.max(startSlot, endSlot);
-        int topRight;
-        for (topRight = bottomRight; topRight > topLeft; topRight -= 9) ;
-        int bottomLeft;
-        for (bottomLeft = topLeft; bottomLeft < bottomRight; bottomLeft += 9) ;
-        topRight += 9;
-        bottomLeft -= 9;
+    protected void borderWithAnyStates(ItemStack item, String[] states, int cornerSlot1, int cornerSlot2) {
+        if (cornerSlot1 < 0 || cornerSlot1 >= getSize()) {
+            throw new IllegalArgumentException("Corner 1 is out of bounds");
+        }
+        if (cornerSlot2 < 0 || cornerSlot2 >= getSize()) {
+            throw new IllegalArgumentException("Corner 2 is out of bounds");
+        }
 
-        for (int y = topLeft; y <= bottomLeft; y += 9) {
-            for (int x = y; x <= topRight - topLeft + y; x++) {
-                if (y == topLeft || y == bottomLeft || x == y || x == topRight - topLeft + y) {
-                    attachItem(GUIItem.builder(x)
+        int minSlot = Math.min(cornerSlot1, cornerSlot2);
+        int maxSlot = Math.max(cornerSlot1, cornerSlot2);
+
+        int minRow = minSlot / 9;
+        int maxRow = maxSlot / 9;
+        int minCol = minSlot % 9;
+        int maxCol = maxSlot % 9;
+
+        for (int row = minRow; row <= maxRow; row++) {
+            for (int col = minCol; col <= maxCol; col++) {
+                boolean isTopOrBottomRow = row == minRow || row == maxRow;
+                boolean isLeftOrRightCol = col == minCol || col == maxCol;
+
+                if (isTopOrBottomRow || isLeftOrRightCol) {
+                    int slot = row * 9 + col;
+                    attachItem(GUIItem.builder(slot)
                             .item(item)
                             .requireAnyState(states)
                             .build());
                 }
             }
         }
+
         doAction(new RefreshAction());
     }
+
 
     // State Management
     public boolean hasState(String state) {
@@ -315,6 +424,7 @@ public abstract class SkyBlockAbstractInventory extends Inventory {
 
         setItemStack(slot, toDisplay);
     }
+
 
     public List<GUIItem> getItemsInSlot(int slot) {
         return Collections.synchronizedList(items.getOrDefault(slot, List.of()));
