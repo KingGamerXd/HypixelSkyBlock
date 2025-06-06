@@ -22,8 +22,6 @@ public class RefreshSlotAction implements GUIAction {
         GUIItem item = getItem(gui, slot);
         if (item != null) {
             gui.setItemStack(slot, item.getItem());
-        } else {
-            gui.setItemStack(slot, ItemStack.AIR);
         }
         gui.update();
     }
