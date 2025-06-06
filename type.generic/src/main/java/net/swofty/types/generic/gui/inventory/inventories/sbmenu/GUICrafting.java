@@ -18,6 +18,7 @@ import net.swofty.types.generic.gui.inventory.ItemStackCreator;
 import net.swofty.types.generic.gui.inventory.SkyBlockAbstractInventory;
 import net.swofty.types.generic.gui.inventory.actions.AddStateAction;
 import net.swofty.types.generic.gui.inventory.actions.RemoveStateAction;
+import net.swofty.types.generic.gui.inventory.actions.SetTitleAction;
 import net.swofty.types.generic.item.SkyBlockItem;
 import net.swofty.types.generic.item.crafting.SkyBlockRecipe;
 import net.swofty.types.generic.item.updater.PlayerItemUpdater;
@@ -45,15 +46,16 @@ public class GUICrafting extends SkyBlockAbstractInventory {
     @Override
     public void handleOpen(SkyBlockPlayer player) {
         // Initial state
+        doAction(new SetTitleAction(Component.text("Craft Item")));
         doAction(new AddStateAction(STATE_NO_RECIPE));
 
         // Base background
         fill(ItemStackCreator.createNamedItemStack(Material.BLACK_STAINED_GLASS_PANE, "").build(), 13, 34);
 
         // State-based borders
-        borderWithState(ItemStackCreator.createNamedItemStack(Material.RED_STAINED_GLASS_PANE).build(), STATE_NO_RECIPE, 0, 44);
+        borderWithState(ItemStackCreator.createNamedItemStack(Material.RED_STAINED_GLASS_PANE).build(), STATE_NO_RECIPE, 45, getSize()  - 1);
         borderWithStates(ItemStackCreator.createNamedItemStack(Material.LIME_STAINED_GLASS_PANE).build(),
-                new String[]{STATE_VALID_RECIPE, STATE_CRAFTABLE}, 0, 44);
+                new String[]{STATE_VALID_RECIPE, STATE_CRAFTABLE}, 45, getSize() - 1);
         border(ItemStackCreator.createNamedItemStack(Material.BLACK_STAINED_GLASS_PANE).build(), 0, 44);
 
         // Close button
@@ -125,7 +127,7 @@ public class GUICrafting extends SkyBlockAbstractInventory {
 
                     return builder.build();
                 })
-                .requireStates(new String[]{STATE_VALID_RECIPE, STATE_CRAFTABLE})
+                .requireStates(STATE_VALID_RECIPE, STATE_CRAFTABLE)
                 .onClick((ctx, item) -> handleCraftingClick(ctx, finalRecipe))
                 .build());
     }
