@@ -94,7 +94,7 @@ public class GUIInventoryPets extends SkyBlockPaginatedInventory<SkyBlockItem> {
 
     @Override
     protected void performSearch(SkyBlockPlayer player, String query, int page, int maxPage) {
-        fill(ItemStackCreator.createNamedItemStack(Material.BLACK_STAINED_GLASS_PANE, "").build());
+        border(ItemStackCreator.createNamedItemStack(Material.BLACK_STAINED_GLASS_PANE, "").build());
 
         attachItem(GUIItem.builder(49)
                 .item(ItemStackCreator.createNamedItemStack(Material.BARRIER, "§cClose").build())
@@ -203,7 +203,7 @@ public class GUIInventoryPets extends SkyBlockPaginatedInventory<SkyBlockItem> {
 
     @Override
     protected Component getTitle(SkyBlockPlayer player, String query, int page, PaginationList<SkyBlockItem> paged) {
-        return Component.text("(" + page + "/" + paged.getPageCount() + ") Pets");
+        return Component.text("(" + paged.getPageCount() + "/" + page + ") Pets");
     }
 
     @Override
