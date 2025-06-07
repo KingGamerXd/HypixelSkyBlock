@@ -57,7 +57,7 @@ public class GUIInventoryCreative extends SkyBlockPaginatedInventory<SkyBlockIte
 
     @Override
     protected void performSearch(SkyBlockPlayer player, String query, int page, int maxPage) {
-        fill(ItemStackCreator.createNamedItemStack(Material.BLACK_STAINED_GLASS_PANE, "").build());
+        border(ItemStackCreator.createNamedItemStack(Material.BLACK_STAINED_GLASS_PANE, "").build());
 
         attachItem(GUIItem.builder(50)
                 .item(ItemStackCreator.createNamedItemStack(Material.BARRIER, "§cClose").build())
@@ -111,7 +111,7 @@ public class GUIInventoryCreative extends SkyBlockPaginatedInventory<SkyBlockIte
                         ctx.player().addAndUpdateItem(skyBlockItem);
                         ctx.player().sendMessage(Component.text("§aYou have been given §7x1 " + skyBlockItem.getDisplayName() + "§a."));
                     }
-                    return true;
+                    return false;
                 })
                 .build();
     }

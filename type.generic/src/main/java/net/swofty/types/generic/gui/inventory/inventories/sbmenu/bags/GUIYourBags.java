@@ -29,7 +29,7 @@ public class GUIYourBags extends SkyBlockAbstractInventory {
 
     @Override
     public void handleOpen(SkyBlockPlayer player) {
-        fill(ItemStackCreator.createNamedItemStack(Material.BLACK_STAINED_GLASS_PANE).build());
+        border(ItemStackCreator.createNamedItemStack(Material.BLACK_STAINED_GLASS_PANE).build());
 
         // Close button
         attachItem(GUIItem.builder(49)
