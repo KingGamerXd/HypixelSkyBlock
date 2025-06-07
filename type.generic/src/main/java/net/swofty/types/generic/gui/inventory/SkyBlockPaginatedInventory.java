@@ -1,6 +1,7 @@
 package net.swofty.types.generic.gui.inventory;
 
 import net.kyori.adventure.text.Component;
+import net.minestom.server.entity.Player;
 import net.minestom.server.inventory.InventoryType;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
@@ -84,10 +85,12 @@ public abstract class SkyBlockPaginatedInventory<T> extends SkyBlockAbstractInve
                         Material.BIRCH_SIGN, 1,
                         "§7Query: §e" + (Objects.equals(search, "") ? "None" : search)).build())
                 .onClick((context, item) -> {
-                    SkyBlockSignGUI signGUI = new SkyBlockSignGUI(context.player());
-                    signGUI.open(new String[]{"§eQuery: §a" + search, "§7Enter your query above!"}).join();
-                    open(context.player(), search, 1);
-                    return true;
+                    SkyBlockPlayer player = context.player();
+                    SkyBlockSignGUI signGUI = new SkyBlockSignGUI(player);
+                    signGUI.open(new String[]{"§eQuery: §a" + search, "§7Enter your query above!"}).thenAccept(s -> {
+                        open(player, s, 1);
+                    });
+                    return false;
                 })
                 .build();
     }
@@ -103,7 +106,7 @@ public abstract class SkyBlockPaginatedInventory<T> extends SkyBlockAbstractInve
                 .onClick((context, item) -> {
                     int newPage = forward ? page + 1 : page - 1;
                     open(context.player(), search, newPage);
-                    return true;
+                    return false;
                 })
                 .build();
     }
