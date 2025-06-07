@@ -121,7 +121,7 @@ public class GUICollectionReward extends SkyBlockAbstractInventory {
                                 ctx.player().sendMessage("There is no recipe available for this item!");
                             }
                         }
-                        return true;
+                        return false;
                     })
                     .build());
         }

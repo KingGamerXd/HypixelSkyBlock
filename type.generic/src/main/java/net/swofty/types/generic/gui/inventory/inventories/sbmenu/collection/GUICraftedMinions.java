@@ -25,9 +25,6 @@ import net.swofty.types.generic.utility.PaginationList;
 import java.util.*;
 
 public class GUICraftedMinions extends SkyBlockPaginatedInventory<SkyBlockItem> {
-    private static final String STATE_MINION_UNLOCKED = "minion_unlocked";
-    private static final String STATE_MINION_LOCKED = "minion_locked";
-    private static final String STATE_MINION_MAXED = "minion_maxed";
 
     private final SkyBlockAbstractInventory previousGUI;
 
@@ -36,29 +33,6 @@ public class GUICraftedMinions extends SkyBlockPaginatedInventory<SkyBlockItem> 
         this.previousGUI = previousGUI;
     }
 
-    @Override
-    public void handleOpen(SkyBlockPlayer player) {
-        fill(ItemStackCreator.createNamedItemStack(Material.BLACK_STAINED_GLASS_PANE, "").build());
-
-        // Close button
-        attachItem(GUIItem.builder(49)
-                .item(ItemStackCreator.createNamedItemStack(Material.BARRIER, "§cClose").build())
-                .onClick((ctx, item) -> {
-                    ctx.player().closeInventory();
-                    return true;
-                })
-                .build());
-
-        // Back button
-        attachItem(GUIItem.builder(48)
-                .item(ItemStackCreator.getStack("§aGo Back", Material.ARROW, 1,
-                        "§7To " + previousGUI.getTitleAsString()).build())
-                .onClick((ctx, item) -> {
-                    ctx.player().openInventory(previousGUI);
-                    return true;
-                })
-                .build());
-    }
 
     @Override
     public int[] getPaginatedSlots() {
@@ -86,6 +60,26 @@ public class GUICraftedMinions extends SkyBlockPaginatedInventory<SkyBlockItem> 
 
     @Override
     public void performSearch(SkyBlockPlayer player, String query, int page, int maxPage) {
+        fill(ItemStackCreator.createNamedItemStack(Material.BLACK_STAINED_GLASS_PANE, "").build());
+
+        // Close button
+        attachItem(GUIItem.builder(49)
+                .item(ItemStackCreator.createNamedItemStack(Material.BARRIER, "§cClose").build())
+                .onClick((ctx, item) -> {
+                    ctx.player().closeInventory();
+                    return true;
+                })
+                .build());
+
+        // Back button
+        attachItem(GUIItem.builder(48)
+                .item(ItemStackCreator.getStack("§aGo Back", Material.ARROW, 1,
+                        "§7To " + previousGUI.getTitleAsString()).build())
+                .onClick((ctx, item) -> {
+                    ctx.player().openInventory(previousGUI);
+                    return true;
+                })
+                .build());
         if (page > 1) {
             attachItem(createNavigationButton(45, query, page, false));
         }
@@ -116,7 +110,6 @@ public class GUICraftedMinions extends SkyBlockPaginatedInventory<SkyBlockItem> 
         boolean maxed = minionAmount == minionRegistry.asSkyBlockMinion().getTiers().size();
 
         return GUIItem.builder(slot)
-                .requireState(unlocked ? (maxed ? STATE_MINION_MAXED : STATE_MINION_UNLOCKED) : STATE_MINION_LOCKED)
                 .item(() -> {
                     if (!unlocked) {
                         return ItemStackCreator.getStack("§c" + StringUtility.toNormalCase(minionRegistry.name()) + " Minion",
