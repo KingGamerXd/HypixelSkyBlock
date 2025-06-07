@@ -5,7 +5,9 @@ import net.minestom.server.event.inventory.InventoryPreClickEvent;
 import net.minestom.server.inventory.PlayerInventory;
 import net.minestom.server.inventory.click.ClickType;
 import net.minestom.server.item.ItemComponent;
+import net.minestom.server.item.ItemStack;
 import net.swofty.commons.StringUtility;
+import net.swofty.commons.item.ItemType;
 import net.swofty.types.generic.event.EventNodes;
 import net.swofty.types.generic.event.SkyBlockEvent;
 import net.swofty.types.generic.event.SkyBlockEventClass;
@@ -32,7 +34,7 @@ public class ActionPlayerInventoryClick implements SkyBlockEventClass {
             return;
         }
 
-        if (clickedItem.hasComponent(InteractableComponent.class)) {
+        if (clickedItem.hasComponent(InteractableComponent.class) && event.getInventory() instanceof PlayerInventory) {
             InteractableComponent interactable = clickedItem.getComponent(InteractableComponent.class);
             if (interactable.onInventoryInteract(player, clickedItem)) {
                 event.setCancelled(true);
